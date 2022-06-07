@@ -86,7 +86,6 @@ class SalesAnalyst
     y = price_std_dev
     @item_repository.all.select do |item|
       item.unit_price > (x + (y * 2))
-      require "pry"; binding.pry
     end
   end
 
