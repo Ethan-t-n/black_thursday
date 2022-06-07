@@ -20,4 +20,8 @@ class SalesEngine
     @merchant_repository
   end
 
+  def items
+    @item_repository
+  end
+
 end
