@@ -102,11 +102,57 @@ RSpec.describe SalesAnalyst do
     expect(@sales_analyst.date_to_day.count).to eq(4985)
   end
 
-  it "shows which days are invoices created at more than one standard deviation above the mean" do
+  it "turns invoice dates into days of the week" do
+    expect(@sales_analyst.date_to_day).to be_a Array
+    expect(@sales_analyst.date_to_day).to be_a Array
+  end
+
+  it "returns an array of all invoices on a Sunday" do
+    expect(@sales_analyst.sunday_inv).to be_a Array
+    expect(@sales_analyst.sunday_inv.count).to eq 708
+  end
+
+  it "returns an array of all invoices on a Monday" do
+    expect(@sales_analyst.monday_inv).to be_a Array
+    expect(@sales_analyst.monday_inv.count).to eq 696
+  end
+
+  it "returns an array of all invoices on a Tuesday" do
+    expect(@sales_analyst.tuesday_inv).to be_a Array
+    expect(@sales_analyst.tuesday_inv.count).to eq 692
+  end
+
+  it "returns an array of all invoices on a Wednesday" do
+    expect(@sales_analyst.wednesday_inv).to be_a Array
+    expect(@sales_analyst.wednesday_inv.count).to eq 741
+  end
+
+  it "returns an array of all invoices on a Thursday" do
+    expect(@sales_analyst.thursday_inv).to be_a Array
+    expect(@sales_analyst.thursday_inv.count).to eq 718
+  end
+
+  it "returns an array of all invoices on a Friday" do
+    expect(@sales_analyst.friday_inv).to be_a Array
+    expect(@sales_analyst.friday_inv.count).to eq 701
+  end
+
+  it "returns an array of all invoices on a Saturday" do
+    expect(@sales_analyst.saturday_inv).to be_a Array
+    expect(@sales_analyst.saturday_inv.count).to eq 729
+  end
+
+  it "reuturns an array of 'day'_inv arrays" do
+    expect(@sales_analyst.days_of_the_week).to be_a Array
+    expect(@sales_analyst.days_of_the_week.flatten.count).to eq 4985
+  end
+
+  it "returns a standard deviation for invoices per day" do
+    expect(@sales_analyst.standard_deviation_invoices_per_day).to eq 18.06
+  end
+
+  it "returns top_days_by_invoice_count" do
     expect(@sales_analyst.top_days_by_invoice_count).to eq(["Wednesday"])
   end
 
-  # it "gets seperate days" do
-  #   expect(@sales_analyst.seperate_days).to be_a(Array)
-  # end
 end
