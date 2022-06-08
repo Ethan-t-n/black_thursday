@@ -19,26 +19,15 @@ class SalesAnalyst < SalesEngine
   end
 
   def invoice_paid_in_full?(invoice_id)
-    x = @transaction_repository.all
-    y = x.find do |transaction|
-          invoice_id == transaction.invoice_id.to_i
-        end
-      if y.result == "success"
-        return true
-      else
-        return false
-      end
-    end
+    y = @transaction_repository.all.find {|transaction|invoice_id == transaction.invoice_id.to_i}
+    return true if y.result == "success"
+    return false if y.result != "success"
+  end
 
   def invoice_total(invoice_id)
-    array_matching_invoice_ids = @invoice_item_repository.all.find_all do |invoice_item|
-          invoice_item.invoice_id.to_i == invoice_id.to_i
-        end
-    unit_price_times_quantity = []
-    array_matching_invoice_ids.each do |invoice_instance|
-      unit_price_times_quantity << invoice_instance.unit_price.to_i * invoice_instance.quantity.to_i
-    end
-   unit_price_times_quantity.sum * 0.01
+    matching_invoice_ids = @invoice_item_repository.all.find_all{|invoice| invoice.invoice_id.to_i == invoice_id.to_i}
+    unit_price_times_quantity = matching_invoice_ids.map {|invoice|invoice.unit_price.to_i * invoice.quantity.to_i}
+    unit_price_times_quantity.sum * 0.01
   end
 
   def average_item_price_for_merchant(merchant_id)
@@ -58,10 +47,8 @@ class SalesAnalyst < SalesEngine
 
   def merchants_with_high_item_count
     std_dev = average_items_per_merchant_standard_deviation
-    x = @item_repository.all.group_by {|item| item.merchant_id}
-    merchant_id_array = x.keys.find_all do |id|
-      @item_repository.find_all_by_merchant_id(id).count > (std_dev + average_items_per_merchant)
-    end
+    item_hash = @item_repository.all.group_by {|item| item.merchant_id}
+    merchant_id_array = item_hash.keys.find_all {|id| @item_repository.find_all_by_merchant_id(id).count > (std_dev + average_items_per_merchant)}
     merchant_array = merchant_id_array.map {|merchant_id|@merchant_repository.find_by_id(merchant_id)}
   end
 
@@ -74,11 +61,9 @@ class SalesAnalyst < SalesEngine
   end
 
   def price_std_dev
-    all_item_prices = @item_repository.all.map {|item| item.unit_price}
-    all_items_count = @item_repository.all.count
-    avg_item_price = (all_item_prices.sum/all_items_count)
+    avg_item_price = (@item_repository.all.sum {|item| item.unit_price}/@item_repository.all.count)
     std_dev_difs = @item_repository.all.flat_map{|item|((item.unit_price - avg_item_price)**2)}
-    sq_rt = Math.sqrt(((std_dev_difs.sum) / (all_items_count - 1)).to_f)
+    sq_rt = Math.sqrt(((std_dev_difs.sum) / (@item_repository.all.count - 1)).to_f)
     std_dev_price = sq_rt.round(2)
   end
 
@@ -94,11 +79,16 @@ class SalesAnalyst < SalesEngine
   ((@invoice_repository.all.count.to_f / @merchant_repository.all.count.to_f).round(2))
   end
 
+  def merchant_ids
+    @invoice_repository.all.group_by {|invoice| invoice.merchant_id}
+  end
+
   def average_invoices_per_merchant_standard_deviation
-    merchant_ids = @invoice_repository.all.group_by {|invoice| invoice.merchant_id}
     merch_array = merchant_ids.flat_map {|_,value|value.count}
-    merch_invoice_count = merch_array.map {|invoice_count|((invoice_count - average_invoices_per_merchant)**2)}
-    Math.sqrt(((merch_invoice_count.sum) / (merch_invoice_count.count - 1)).to_f.round(2)).round(2)
+    merch_inv_count = merch_array.map do |invoice_count|
+      ((invoice_count - average_invoices_per_merchant)**2)
+    end
+    Math.sqrt(((merch_inv_count.sum)/(merch_inv_count.count - 1)).to_f.round(2)).round(2)
   end
 
   def top_merchants_by_invoice_count
@@ -117,33 +107,28 @@ class SalesAnalyst < SalesEngine
     end
   end
 
-  def invoice_status(symbol)
-    shipped = @invoice_repository.find_all_by_status("shipped")
-    pending = @invoice_repository.find_all_by_status("pending")
-    returned = @invoice_repository.find_all_by_status("returned")
+  def shipped
+    @invoice_repository.find_all_by_status("shipped")
+  end
 
+  def pending
+    @invoice_repository.find_all_by_status("pending")
+  end
+
+  def returned
+    @invoice_repository.find_all_by_status("returned")
+  end
+
+  def invoice_status(symbol)
     ship_perc = (((shipped.count.to_f / @invoice_repository.all.count).to_f) * 100).round(2)
     pending_perc = (((pending.count.to_f / @invoice_repository.all.count).to_f) * 100).round(2)
     returned_perc = (((returned.count.to_f / @invoice_repository.all.count).to_f) * 100).round(2)
-
-    if symbol.to_s == "shipped"
-      ship_perc
-    elsif symbol.to_s == "pending"
-      pending_perc
-    elsif symbol.to_s == "returned"
-      returned_perc
-    else
-      puts "Eat a bag of chips :)"
-    end
+    return ship_perc if symbol.to_s == "shipped"
+    return pending_perc if symbol.to_s == "pending"
+    return returned_perc if symbol.to_s == "returned"
   end
 
   def date_to_day
-    # @invoice_repository.all.each do |invoice_instance|
-    #   invoice_instance.created_at = Date.parse(invoice_instance.created_at).strftime("%A")
-    #   @invoice_day_of_week << invoice_instance
-    # end
-    # @invoice_day_of_week
-
     invoice_days = @invoice_repository.all.map do |invoice|
       invoice.created_at = Date.parse(invoice.created_at).strftime("%A")
     end
@@ -177,9 +162,6 @@ class SalesAnalyst < SalesEngine
     date_to_day.find_all{|day| day.include?("Saturday")}
   end
 
-
-
-
   def days_of_the_week
     days_of_the_week_array = []
     days_of_the_week_array.push(sunday_inv, monday_inv,tuesday_inv,wednesday_inv,thursday_inv,friday_inv, saturday_inv)
@@ -197,9 +179,7 @@ class SalesAnalyst < SalesEngine
   def top_days_by_invoice_count
     avg_invoice_perday = @invoice_repository.all.count / 7
     sdipd = standard_deviation_invoices_per_day
-    high_invoice_days = days_of_the_week.select do |invoice|
-      invoice.count > (avg_invoice_perday + (sdipd * 1))
-    end
+    high_invoice_days = days_of_the_week.select {|invoice| invoice.count > (avg_invoice_perday + (sdipd * 1))}
     high_invoice_days.flatten.uniq
   end
 end
